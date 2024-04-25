@@ -1,0 +1,293 @@
+---
+title: "Risk Factors For Cardiovascular Heart Diseases"
+author: "Nirusha Manandhar"
+date: "2023-11-30"
+output: 
+  ioslides_presentation: 
+    smaller: yes
+    widescreen: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(moments)
+library(corrplot)
+library(readr)
+heart <- read_csv("H:/Studies/Grad/6100/Business Analytics 2023/Heart Disease/CHD/heart_data.csv")
+attach(heart)
+```
+
+## <font color="Red"> Risk Factors for Cadiovascular Heart diseases </font>
+
+Cardiovascular heart disease is a prevalent health concern, and its treatment can be costly. The various causes of cardiovascular diseases, including hereditary factors and lifestyle choices, underscore the need to identify common risk factors. 
+
+Other factors such as Mean Arterial Pressure and Body Mass Index also could be the factors for cardiovascular diseases.
+
+## <font color="Red"> Objectives </font>
+
+- Does cholesterol level significantly impact the risk of cardiovascular heart disease? If yes, would an active lifestyle impact cholesterol levels?
+- Is a higher BMI considered a notable risk factor for CHD?
+- Can maintaining an active lifestyle reduce the risk of cardiovascular heart disease?
+
+## <font color="Red"> Data Preparation </font>
+- Removed unnecessary variables
+- Mutated columns to rename values
+- Converted Age from Days to Years
+
+```{r echo=FALSE}
+heart_cleaned = subset(heart, select= -index)
+heart_cleaned = heart_cleaned %>% 
+  mutate(age= round(age/365,0),
+         
+         gender=case_when(
+           (gender==2) ~ "Female",
+           (gender==1) ~ "Male",
+            TRUE ~ NA_character_
+           ),
+         
+         smoke=case_when(
+           (smoke==0) ~ "Non-Smoker",
+           (smoke==1) ~ "Smoker"
+         ),
+         
+         active=case_when(
+           (active==0) ~ "Not Active",
+           (active==1) ~ "Active",
+            TRUE ~ NA_character_
+         ),
+         
+          alco=case_when(
+           (alco==0) ~ "Non-Drinker",
+           (alco==1) ~ "Drinker",
+            TRUE ~ NA_character_
+         ),
+          
+           cardio=case_when(
+           (cardio==0) ~ "CHD NEGATIVE",
+           (cardio==1) ~ "CHD POSITIVE",
+            TRUE ~ NA_character_
+         ),
+           
+            gluc=case_when(
+           (gluc==1) ~ "Normal",
+           (gluc==2) ~ "Slightly High",
+           (gluc==3) ~ "High",
+            TRUE ~ NA_character_
+           ),
+            
+            cholesterol=case_when(
+           (cholesterol==1) ~ "Normal",
+           (cholesterol==2) ~ "Slightly High",
+           (cholesterol==3) ~ "High",
+            TRUE ~ NA_character_
+           )
+         
+         )
+```
+
+
+```{r}
+heart_cleaned
+```
+
+## <font color="Red"> Data Processing </font>
+
+<b> BMI Calculation and Labeling BMI </b>
+
+- BMI = Weight/ ((height *0..01)^2)
+
+<b> BMI Labels </b>
+
+- 0 - 18.5) ~ "Underweight"
+- 18.51 - 24.98) ~ "Normal"
+- 24.98 - 29.98) ~ "Overweight"
+- 29.98 - 38.8) ~ "Obese"
+- 38.8 - 500) ~ "Dangerously Obese"
+
+<b> MAP (Mean Arterial Pressure) Calculation and Labeling BMI </b>
+
+- MAP = (ap_hi+ap_lo*2)/3
+
+<b> Pressure Stat Labels </b>
+
+- 0 - 90 ~ "Normal"
+- 90 - 91 ~ "High BP"
+- 91 - 95.99 ~ "Hypertension Stage 1"
+- 96 - 150 ~ "Hypertension Stage 2"
+
+
+```{r}
+
+#BMI Calculation and Categorization
+heart_cleaned = heart_cleaned %>% 
+  mutate(bmi= round((weight)/((height*0.01)^2),2))
+
+heart_cleaned= heart_cleaned %>%
+  mutate(WeightStat= case_when(
+    between(bmi,0,18.5) ~ "Underweight",
+    between(bmi,18.51,24.98) ~ "Normal",
+    between(bmi,24.98,29.98) ~ "Overweight",
+    between(bmi,29.98,38.8) ~ "Obese",
+    between(bmi,38.8,500) ~ "Dangerously Obese",
+    TRUE ~ NA_character_
+  ))
+
+# Mean Arterial Pressure (MAP) calculation and categorization]
+heart_cleaned = heart_cleaned %>% 
+  mutate(map= (ap_hi+ap_lo*2)/3)
+
+heart_cleaned= heart_cleaned %>%
+  mutate(PressureStat= case_when(
+    between(map,0,90) ~ "Normal",
+    between(map,90,91) ~ "High BP",
+    between(map,91,95.99) ~ "Hypertension Stage 1",
+    between(map,96,150) ~ "Hypertension Stage 2",
+    TRUE ~ NA_character_
+  ))
+
+
+```
+
+
+## <font color = "Red" > Blood Pressure Vs. CHD </font>
+```{r echo=FALSE}
+ggplot(heart_cleaned,aes(x=PressureStat,fill=cardio))+
+  geom_bar()+
+  ylab("proportion")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+## <font color ="Red"> Cleaning NA </font>
+```{r echo=TRUE}
+heart_data= heart_cleaned %>%
+  filter(PressureStat != "NA")
+```
+
+
+## <font color ="Red"> Bar Chart with proportion for Pressure Stat in both Genders </font>
+
+For both male and female, as the pressure increases, the ratio of individuals with cardiovascular disease increased. This shows there is an association between pressure stat or mean arterial pressure with cardiovascular disease in positive direction. Individuals could have CHD as arterial pressure increases.
+
+```{r}
+
+heart_data$PressureStat= factor(heart_data$PressureStat,
+                                levels=c("Normal","High BP","Hypertension Stage 1", "Hypertension Stage 2"))
+ggplot(heart_data,aes(x=PressureStat,fill=cardio))+
+  geom_bar(position = "fill")+
+  ylab("proportion")+
+  theme(axis.text.x = element_text(angle = 90))+
+  facet_wrap(~gender)+
+  labs(title="Pressure Vs. CHD ")
+```
+
+## <font color = "Red"> Checking Proportion Statistics for CHD and Pressure </font>
+```{r echo=TRUE}
+MAPCount=table(heart_data$PressureStat,heart_data$cardio)
+prop.table(MAPCount,1)
+```
+Proportion of people with Normal MAP that have CHD Positive is 26%, High BP is 28%, Hypertension Stage 1 is 36% and Hypertension Stage 2 is 74%.
+
+
+## <font color="Red"> Weight Vs. CHD </font>
+
+```{r}
+
+heart_data$WeightStat= factor(heart_data$WeightStat,
+                                levels=c("Underweight","Normal","Overweight", "Obese","Dangerously Obese"))
+ggplot(heart_data,aes(x=WeightStat,fill=cardio))+
+  geom_bar(position = "dodge")+
+  ylab("proportion")+
+  theme(axis.text.x = element_text(angle = 90))+
+  facet_wrap(~gender)+
+  labs(title="Weight Vs. CHD")
+```
+
+Propertion of CHD is found increasing as weight stat increase from normal to overweight to obese to dangerously obese in both men and women. The ratio of female with CHD positive and negative is 1:1 for underweight category while it is 2:1 for male in underweight category.
+
+## <font color = "Red"> Checking Proportion Statistics for CHD and Weight </font>
+```{r}
+WeightCount=table(heart_data$WeightStat,heart_data$cardio)
+prop.table(WeightCount,1)
+```
+
+27% of underweight individuals have CHD, 39% Normal, 50% Overweight, 62% Obese and 68% Dangerously obese individuals have CHD.
+
+There is a positive association between CHD and weight, as weight increases, there is higher probablity of having CHD.
+
+## <font color="Red"> Correlation between Age, BMI and MAP </font>
+
+```{r}
+Correlation_Variables = heart_data[,c("age","bmi","map")]
+cor_matrix= cor(Correlation_Variables, use="complete.obs")
+corrplot(cor_matrix, method = "color", type = "upper", addCoef.col = "black")
+
+```
+
+There is no strong correlation between pressure, weight and age. They have weak positive correlation between each other.
+
+## <font color="Red">  LifeStyle Analysis </font>
+
+```{r}
+Lifestyle_contingency= table(heart_cleaned$smoke,heart_cleaned$alco,heart_cleaned$cardio)
+```
+
+```{r}
+mosaicplot(table(heart_data$active,heart_data$cardio),
+           main = "Customized Mosaic Plot",
+           color = c("blue", "green"),  # Specify colors
+           border = c("white", "white"),  # Specify border colors
+           shade = TRUE,  # Enable shading
+           legend = TRUE  # Show legend
+)
+```
+The proportion of individuals with CHD positive and non-active (who do not exercise) slightly higher. But this does not conclude the association between the two variables.
+
+
+## <font color="Red"> Finding Correlation between Categorical Data with Tetrachoric Correlation </font>
+
+Smoking habits do not co-relate with CHD, while there is very weak contribution in CHD by Drinking  and Active (Exercising habits).
+
+```{r echo=TRUE}
+library(psych)
+tetrachoric(table(heart_cleaned$smoke, heart_cleaned$cardio))
+tetrachoric(table(heart_cleaned$alco, heart_cleaned$cardio))
+tetrachoric(table(heart_cleaned$active, heart_cleaned$cardio))
+
+```
+## <font color="Red"> Finding Correlation between Categorical Data with Chisq test </font>
+
+ Smoking status (smoke) is significantly associated with cardiovascular disease.
+Alcohol consumption (alco) does not show a significant association with cardiovascular disease.
+Physical activity (active) is highly significantly associated with cardiovascular disease.
+
+```{r}
+chisq.test(table(heart_cleaned$smoke, heart_cleaned$cardio))
+chisq.test(table(heart_cleaned$alco, heart_cleaned$cardio))
+chisq.test(table(heart_cleaned$active, heart_cleaned$cardio))
+
+```
+
+
+## <font color="Red">  Cholesterol Analysis </font>
+
+Proportion of individuals with CHD positive increases for cholesterol normal to slightly high to high for both genders indicating there is a positive association between cholesterol and CHD.
+
+```{r}
+ggplot(heart_cleaned,aes(x=cholesterol,fill=cardio))+
+  geom_bar(position = "fill")+
+  ylab("proportion")+
+  theme(axis.text.x = element_text(angle = 90))+
+  facet_wrap(~gender)
+```
+
+
+## <font color="Red"> Conclusion </font>
+
+Based on the exploratory data analysis in this dataset study, mean arterial pressure, weight (bmi), cholesterol has positive association with CHD. The proportion of CHD positive increased as these factors reached the higher levels.
+
+While the analysis for lifestyle including smoking, active/ non-active and drinking habits also showed positive association through chisq test, drinking and smoking habits showed no impact according to tetrachoric correlation, and was inconclusive according to mosiac plots.
+Life style analysis would need more larger dataset and more complex studies for  a better conclusion.
+
